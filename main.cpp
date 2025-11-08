@@ -225,3 +225,30 @@ void SocialNetwork::saveUsers(){
     cout<<"Users saved succesfully";
 }
 
+void SocialNetwork::saveFriends(){
+    ofstream file("friends.csv");
+    if(!file.is_open()){
+        cout<<"Error saving friends!\n";
+        return;
+    }
+    file<<"user_id,friend_id,weight\n";
+    
+    //to avoid duplicates
+    set<pair<int,int>> writtenPairs;
+    for(auto &entry : friends){
+        int userId = entry.first;
+        for(auto &pair : entry.second){
+            int friendId = pair.first;
+            int weight = pair.second;
+
+            if(writtenPairs.count({friendId,userId})==0){
+                file<<userId<<","<<friendId<<","<<weight<<"\n";
+                writtenPairs.insert({userId,friendId});
+            }
+        }
+    }
+    file.close();
+    cout<<"friend saved succesfully.\n";
+}
+
+
