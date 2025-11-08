@@ -161,3 +161,37 @@ void SocialNetwork::loadUsers(){
     cout << " Loaded " << users.size() << " users successfully.\n";
 }
 
+void SocialNetwork::loadFriends(){
+   ifstream file("friends.csv"); 
+   if(!file.is_open()){
+        cout<<"couldn't open friends.csv";
+        return;
+   }
+   string line;
+   getline(file,line);  // skip first line
+
+   while(getline(file,line)){
+        if(line.empty())    continue;
+
+        stringstream ss(line);
+        string userIdStr, fIdStr, weightStr;
+        getline(ss,userIdStr,',');
+        getline(ss,fIdStr,',');
+        getline(ss,weightStr);
+
+        try {
+            int userId = stoi(userIdStr);
+            int fId = stoi(fIdStr);
+            int weight = stoi(weightStr);
+
+            // add connection
+            friends[userId].push_back({fId, weight});
+            friends[fId].push_back({userId, weight}); // only if CSV is one-directional
+        }
+        catch (...) {
+            cout << " invalid line: " << line << endl;
+        }
+    }
+   file.close();
+}
+
