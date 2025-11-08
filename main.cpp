@@ -109,3 +109,55 @@ int main(){
 
     return 0;
 }
+
+void SocialNetwork::loadUsers(){
+    ifstream file("users.csv");
+    if (!file.is_open()) {
+        cout << "Error opening file!" << endl;
+        return ;
+    }
+    string line;
+    getline(file, line);
+    while(getline(file,line)){
+        if(line.empty())    continue;
+
+        stringstream ss(line);
+        string idStr, username, password, fName, lName, college, locality, ageStr, hobbiesStr;
+        getline(ss, idStr, ',');
+        getline(ss,username,',');
+        getline(ss,password,',');
+        getline(ss,fName,',');
+        getline(ss,lName,',');
+        getline(ss,college,',');
+        getline(ss,locality,',');
+        getline(ss,ageStr,',');
+        getline(ss, hobbiesStr);
+        int id,age;
+        try{
+            id = stoi(idStr);
+            age = stoi(ageStr);
+        }
+        catch (...) {
+            cout<< "Invalid Line\n";
+            continue; 
+        } 
+
+        //split hobbies by comma
+        vector<string>hobbies;
+        string hobby;
+        stringstream hss(hobbiesStr);
+        while(getline(hss,hobby,',')){
+            if (!hobby.empty())
+            hobbies.push_back(hobby);
+        }
+        User u(id,username,fName,lName,college,locality,age,hobbies);
+        u.password = password;
+        users[id] = u;
+        usernameToId[username] = id;
+
+        
+    }
+    file.close();
+    cout << " Loaded " << users.size() << " users successfully.\n";
+}
+
