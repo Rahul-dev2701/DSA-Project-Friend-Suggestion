@@ -195,3 +195,33 @@ void SocialNetwork::loadFriends(){
    file.close();
 }
 
+void SocialNetwork::saveUsers(){
+    ofstream file("users.csv");
+    if(!file.is_open()){
+        cout<<"Error saving users!\n";
+        return;
+    }
+    file<<"id,username,password,firstName,lastName,college,locality,age,hobbies\n";
+
+    for(auto &entry : users){
+        const User &u = entry.second;
+
+        file<<u.id<<","
+            <<u.username<<","
+            <<u.password<<","
+            <<u.firstName<<","
+            <<u.lastName<<","
+            <<u.schoolName<<","
+            <<u.locality<<","
+            <<u.age<<",";
+            
+        for(size_t i=0;i<u.hobbies.size();i++){
+            file<<u.hobbies[i];
+            if(i!=u.hobbies.size()-1)   file<<",";
+        }
+        file<<"\n";
+    }
+    file.close();
+    cout<<"Users saved succesfully";
+}
+
