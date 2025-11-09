@@ -251,4 +251,29 @@ void SocialNetwork::saveFriends(){
     cout<<"friend saved succesfully.\n";
 }
 
+void SocialNetwork::displayCurrentFriends(int userId){
+
+    if(!friends.count(userId)||friends[userId].empty()){
+        cout<<"You have no friends yet.\n";
+        return;
+    }
+
+    cout<<"\n--Friend List--\n";
+    int count = 1;
+    for(auto &pair : friends[userId]){
+        int friendId = pair.first;
+        int weight = pair.second;
+        if(!users.count(friendId))  continue;
+
+        User &f = users[friendId];
+        cout<<count<<"."<<f.username    
+            <<" (" << f.firstName << " " << f.lastName << ") "
+            << " | Age: " << f.age
+            << " | City: " << f.locality
+            << " | Friendship weight: " << weight<< "\n";
+            
+        count++;
+    }
+    cout<<"----------------\n";
+}
 
