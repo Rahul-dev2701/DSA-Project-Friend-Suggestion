@@ -109,3 +109,17 @@ int main(){
 
     return 0;
 }
+void SocialNetwork::registerUser(User A){
+    if(usernameToId.count(A.username)){
+        cout<<"Username '"<<A.username<<"' already exists. Try another.\n ";
+        return;
+    }
+
+    A.id = getNextUserId();
+
+    users[A.id] = A;
+
+    usernameToId[A.username] = A.id;
+
+    cout<<"User registered succesfully with ID: "<<A.id<<"\n";
+}
