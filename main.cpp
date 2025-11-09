@@ -141,7 +141,96 @@ int main(){
         }
         else if(choice==2){
             //Login to existing account
+            string userName;
+            cout<<"Enter username: ";
+            cin>>userName;
+            int userId = sn.loginUser(userName);
+            //check if userId exist
+            if (userId == -1) {
+                cout << "Username not found!\n";
+                continue;
+            }
+            cout<<"Logged in successfully as "<<userName<<"\n";
+            while(true){
+                cout<<"User Menu: \n";
+                cout<<"1. View Profile\n";
+                cout<<"2. View friend list\n";
+                cout<<"3. People you might want to be your friend\n";
+                cout<<"4. Interact with a friend\n";
+                cout<<"5. Logout\n";
+                cout<<"Enter choice\n";
+                int op;
+                cin>>op;
+                if(op==1){
+                    sn.viewProfile(userId);
+                }
+                else if(op==2){
+                    sn.displayCurrentFriends(userId);
+                }
+                else if(op==3){
+                    vector<int> suggestions = sn.suggestedFriends(userId);
+                    if (suggestions.empty()) {
+                        cout << "No friend suggestions available.\n";
+                    }else{
+                        cout << "Friend Suggestions:\n";
+                        for(size_t i=0;i<suggestions.size();i++){
+                            cout<<i+1<<".\n";
+                            sn.viewProfile(suggestions[i]);
+                        }
+                        cout << "\nEnter the numbers of users you want to add as friends (comma separated), or 0 to skip: ";
+                        cin.ignore();
+                        string input;
+                        getline(cin, input); 
+                        if(input!="0"){
+                            size_t start = 0, end;
+                            while ((end = input.find(',', start)) != string::npos) {
+                                string token = input.substr(start, end - start);
+                                if (!token.empty()) {
+                                    int index = stoi(token) - 1;
+                                    if (index >= 0 && index < (int)suggestions.size()) {
+                                        int fid = suggestions[index];
+                                        sn.addFriend(sn.getUser(userId), sn.getUser(fid));
+                                        cout << sn.getUser(fid).username << " added as a friend!\n";
+                                    }
+                                }
+                                start = end+1;
+                            }
+                            // handle the last (or only) number
+                            if (start < input.size()) {
+                                string token = input.substr(start);
+                                if (!token.empty()) {
+                                    int index = stoi(token) - 1;
+                                    if (index >= 0 && index < (int)suggestions.size()) {
+                                        int fid = suggestions[index];
+                                        sn.addFriend(sn.getUser(userId), sn.getUser(fid));
+                                        cout << sn.getUser(fid).username << " added as a friend!\n";
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    sn.saveFriends();
+                    
+                }
+                else if(op==4){
+                   cout << "Enter friend's username to interact with: ";
+                    string fname;
+                    cin >> fname;
 
+                    int friendId = sn.getUserIdByUsername(fname);
+                    if (friendId == -1) {
+                        cout << "No such user exists!\n";
+                    } else {
+                        sn.interact(sn.getUser(userId), sn.getUser(friendId));
+                        sn.saveFriends();
+                    }
+                }
+                else if(op==5){
+                    cout << "Logging out...\n";
+                    break;
+                }
+                else    cout<<"Invalid choice\n";
+            }
             
         }
         else if(choice==3){
