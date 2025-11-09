@@ -123,3 +123,12 @@ void SocialNetwork::registerUser(User A){
 
     cout<<"User registered succesfully with ID: "<<A.id<<"\n";
 }
+int SocialNetwork::getNextUserId(){
+        if(users.empty()) return 1;
+        int maxId = 0;
+        for(const auto &entry : users){
+            if(entry.first>maxId)   maxId = entry.first;
+
+        }
+        return maxId + 1;
+    }
