@@ -132,3 +132,30 @@ int SocialNetwork::getNextUserId(){
         }
         return maxId + 1;
     }
+int SocialNetwork::loginUser(const string &usernme){
+    if(!usernameToId.count(usernme)){
+        cout<<"Username not found\n";
+        return -1;
+    }
+
+    int userId = usernameToId[usernme];
+    User &u = users[userId];
+
+    //ask for password
+    cin.ignore();
+    string inputPassword;
+
+    cout<<"Enter password: ";
+
+    getline(cin,inputPassword);
+    
+    if(inputPassword==u.password){
+        cout<<"Login successful\n";
+        return userId;
+
+    }
+    else{
+        cout<<"Incorrect Password\n";
+        return -1;
+    }
+}
