@@ -277,3 +277,19 @@ void SocialNetwork::displayCurrentFriends(int userId){
     cout<<"----------------\n";
 }
 
+void SocialNetwork::addFriend(User& A, User& B){
+    int userId = A.id;
+    int friendId = B.id;
+
+    for(auto &pair : friends[userId]){
+        if(pair.first == friendId){
+            cout<<"Already friends.\n";
+            return;
+        }
+    }
+
+    friends[userId].push_back({friendId,1});
+    friends[friendId].push_back({userId,1});
+    
+    cout<<"You and "<<B.username<<" are now friends!\n";
+}
