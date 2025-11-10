@@ -293,3 +293,39 @@ void SocialNetwork::addFriend(User& A, User& B){
     
     cout<<"You and "<<B.username<<" are now friends!\n";
 }
+
+double SocialNetwork::computeSimilarity(const User &A, const User &B){
+    double score = 0.0;
+
+    //same college
+    if(A.schoolName==B.schoolName){
+        score+=3.0;
+    }
+
+    //same locality
+    if(B.locality==A.locality){
+        score+=3.0;
+    }
+
+    //age diff
+    int ageDiff = abs(A.age-B.age);
+    if(ageDiff<=2)  score+=1.0;
+    else if (ageDiff<=5)    score+=0.5;
+    else if(ageDiff<=10)    score+= 0.25;
+    
+    //common hobbies
+    int common =0;
+    set<string> uniqueHobbies;
+
+    for(const string &h : A.hobbies)    uniqueHobbies.insert(h);
+    for(const string &h : B.hobbies){
+        if(uniqueHobbies.count(h))   common++;
+        else uniqueHobbies.insert(h);
+    }
+    if(!uniqueHobbies.empty()){
+        double hobbyScore = (double)common/uniqueHobbies.size();
+        score+=hobbyScore*2;
+    }
+
+    return score;
+}
