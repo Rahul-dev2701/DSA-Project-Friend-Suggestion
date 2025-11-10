@@ -159,3 +159,7 @@ int SocialNetwork::loginUser(const string &usernme){
         return -1;
     }
 }
+int SocialNetwork::getUserIdByUsername(const string &uname) {
+        if (usernameToId.count(uname)) return usernameToId[uname];
+        return -1;
+    }
