@@ -3,6 +3,9 @@
 #include<string>
 #include<unordered_map>
 #include<sstream>
+#include<unordered_set>
+#include<queue>
+#include<algorithm>
 using namespace std;
 
 class User {
@@ -265,4 +268,86 @@ void SocialNetwork::addFriend(User& A, User& B){};
 void SocialNetwork::interact(User A, User B){};
 int SocialNetwork::countMutualFriends(int userA, int userB){};
 double SocialNetwork::computeSimilarity(const User &A, const User &B){};
-vector<int> SocialNetwork::suggestedFriends(int userId){};
+vector<int> SocialNetwork::suggestedFriends(int userId){
+    vector<int> result;
+    if(!users.count(userId)){
+        cout<<"Invalid userID\n";
+        return result;  
+    }
+    //exclude yourself and your current friends in the traversal
+    unordered_set<int> firstLevel;
+    firstLevel.insert(userId);
+    for(auto& p : friends[userId]){
+        firstLevel.insert(p.first);
+    }
+
+    unordered_map<int ,double> scoreMap;
+
+    //Bfs upto 2 levels
+    queue<pair<int,int>> q;
+    unordered_set<int> visited;
+    q.push({userId,0});
+    visited.insert(userId);
+    bool foundGraphFriends = false;
+    while(!q.empty()){
+        pair<int,int> p = q.front();
+        int curr = p.first;
+        int dist = p.second;
+        q.pop();
+        if(dist==2) continue;
+        for(auto & neigh : friends[curr]){
+            int neighId = neigh.first;
+            int weight = neigh.second;
+
+            if(!visited.count(neighId)){
+                visited.insert(neighId);
+                q.push({neighId,dist+1});
+            }
+
+            if(firstLevel.count(neighId))   continue;
+
+            foundGraphFriends = true;
+
+            //graph score
+            double graphScore = 0;
+            int mutual = countMutualFriends(userId,neighId);
+            graphScore += mutual*2.0;
+            graphScore += weight*0.1;
+
+            double sim = computeSimilarity(users[userId],users[neighId]);
+
+            scoreMap[neighId] += sim + graphScore;
+
+
+        }
+
+    }
+    if(!foundGraphFriends){
+        for(auto& entry : users){
+            int otherId = entry.first;
+            if(otherId==userId) continue;
+            double sim = computeSimilarity(users[userId],users[otherId]);
+            scoreMap[otherId] = sim;
+
+        }
+    }
+
+
+    //sort by score
+    vector<pair<double,int>> ranked;
+    for(auto& entry : scoreMap){
+        ranked.push_back({entry.second,entry.first});
+
+    }
+
+    sort(ranked.begin(),ranked.end(),[&](auto &a, auto &b){
+        return a.first>b.first;
+    });
+
+    int limit = min(10,(int)ranked.size());
+    for(int i=0;i<limit;i++){
+        result.push_back(ranked[i].second);
+    }
+
+    return result;
+};
