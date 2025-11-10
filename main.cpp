@@ -163,3 +163,6 @@ int SocialNetwork::getUserIdByUsername(const string &uname) {
         if (usernameToId.count(uname)) return usernameToId[uname];
         return -1;
     }
+void SocialNetwork::viewProfile(int userID){
+        users[userID].displayProfile();
+}
