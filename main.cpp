@@ -168,4 +168,24 @@ void SocialNetwork::viewProfile(int userID){
 }
 User& SocialNetwork::getUser(int id) {
         return users[id];
+}
+int SocialNetwork::countMutualFriends(int userA, int userB){
+    if(!friends.count(userA)||!friends.count(userB)){
+        return 0;
     }
+    
+    unordered_set<int> friendsOfA;
+    for(auto &p:friends[userA]){
+        friendsOfA.insert(p.first);
+    }
+
+    int mutualCount = 0;
+
+    for(auto &p : friends[userB]){
+        if(friendsOfA.count(p.first)){
+            mutualCount++;
+        }
+    }
+    return mutualCount;
+
+}
