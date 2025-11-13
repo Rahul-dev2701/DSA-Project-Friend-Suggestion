@@ -67,6 +67,14 @@ private:
     double lastNameSimilarity(const string &name1, const string &name2);  // String similarity for lastnames
     double calculateWeightedPathScore(int userA, int userB);  // Weighted shortest path using Dijkstra
     unordered_map<int, double> dijkstraShortestPaths(int source, int maxDepth);  // Dijkstra's algorithm for weighted graph
+    
+    // Helper functions for friend suggestion
+    double calculateNewUserScore(const User &currentUser, const User &candidate);  // Score for new users (profile-based only)
+    double calculateExistingUserScore(int userId, int candidateId, const User &currentUser, const User &candidate, const unordered_map<int, double> &weightedPaths);  // Score for existing users
+    double calculateMutualFriendsScore(int userId, int candidateId, int mutualCount);  // Calculate mutual friends score with weights
+    double calculateTriadicClosureScore(int candidateId, const unordered_map<int, double> &weightedPaths);  // Calculate triadic closure score
+    double calculateDirectConnectionScore(int userId, int candidateId);  // Calculate direct connection strength
+    vector<int> rankAndReturnTopCandidates(const unordered_map<int, double> &scores, int limit);  // Rank candidates and return top N
 };
 
 #endif

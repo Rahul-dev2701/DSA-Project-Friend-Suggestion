@@ -167,6 +167,57 @@ void SocialNetwork::saveFriends(){
     cout<<"friend saved succesfully.\n";
 }
 
+void SocialNetwork::registerUser(User A){
+    if(usernameToId.count(A.username)){
+        cout<<"Username '"<<A.username<<"' already exists. Try another.\n ";
+        return;
+    }
+
+    A.id = getNextUserId();
+
+    users[A.id] = A;
+
+    usernameToId[A.username] = A.id;
+
+    cout<<"User registered succesfully with ID: "<<A.id<<"\n";
+}
+
+int SocialNetwork::getNextUserId(){
+    if(users.empty()) return 1;
+    int maxId = 0;
+    for(const auto &entry : users){
+        if(entry.first>maxId)   maxId = entry.first;
+    }
+    return maxId + 1;
+}
+
+int SocialNetwork::loginUser(const string &usernme){
+    if(!usernameToId.count(usernme)){
+        cout<<"Username not found\n";
+        return -1;
+    }
+
+    int userId = usernameToId[usernme];
+    User &u = users[userId];
+
+    //ask for password
+    cin.ignore();
+    string inputPassword;
+
+    cout<<"Enter password: ";
+
+    getline(cin,inputPassword);
+    
+    if(inputPassword==u.password){
+        cout<<"Login successful\n";
+        return userId;
+    }
+    else{
+        cout<<"Incorrect Password\n";
+        return -1;
+    }
+}
+
 void SocialNetwork::displayCurrentFriends(int userId){
 
     if(!friends.count(userId)||friends[userId].empty()){
@@ -193,6 +244,10 @@ void SocialNetwork::displayCurrentFriends(int userId){
     cout<<"----------------\n";
 }
 
+void SocialNetwork::viewProfile(int userID){
+    users[userID].displayProfile();
+}
+
 void SocialNetwork::addFriend(User& A, User& B){
     int userId = A.id;
     int friendId = B.id;
@@ -208,6 +263,44 @@ void SocialNetwork::addFriend(User& A, User& B){
     friends[friendId].push_back({userId,1});
     
     cout<<"You and "<<B.username<<" are now friends!\n";
+}
+
+void SocialNetwork::interact(User A, User B){
+    int userId = A.id;
+    int friendId = B.id;
+
+    bool found = false;
+    
+    for(auto &pair: friends[userId]){
+        if(pair.first == friendId){
+            pair.second += 2;
+            found  = true;
+            break;
+        }
+    }
+
+    for(auto &pair : friends[friendId]){
+        if(pair.first == userId){
+            pair.second += 1;
+            break;
+        }
+    }
+
+    if(!found){
+        cout << "You and " << B.username << " are not friends yet. Add them first.\n";
+    }
+    else {
+        cout <<"You interacted with " << B.username << ". Friendship weight increased.\n";
+    }
+}
+
+int SocialNetwork::getUserIdByUsername(const string &uname) {
+    if (usernameToId.count(uname)) return usernameToId[uname];
+    return -1;
+}
+
+User& SocialNetwork::getUser(int id) {
+    return users[id];
 }
 
 // Jaccard Similarity for hobbies: intersection/union
@@ -362,6 +455,140 @@ double SocialNetwork::calculateWeightedPathScore(int userA, int userB){
     return 10.0 / (1.0 + pathDistance);
 }
 
+// Calculate score for new users (profile-based only)
+double SocialNetwork::calculateNewUserScore(const User &currentUser, const User &candidate){
+    double totalScore = 0.0;
+    
+    // Profile Similarity gets full weight for new users
+    // Priority: College > Locality > Hobbies > Age > LastName
+    double profileScore = computeSimilarity(currentUser, candidate);
+    totalScore += profileScore;  // Full weight for profile match (no multiplier needed)
+    
+    // Additional boost for new users with same college or locality
+    if(currentUser.schoolName == candidate.schoolName && !currentUser.schoolName.empty()){
+        totalScore += 18.0;  // Extra boost for same college
+    }
+    if(currentUser.locality == candidate.locality && !currentUser.locality.empty()){
+        totalScore += 17.0;  // Extra boost for same locality (comparable to college)
+    }
+    
+    return totalScore;
+}
+
+// Calculate mutual friends score with weighted consideration
+double SocialNetwork::calculateMutualFriendsScore(int userId, int candidateId, int mutualCount){
+    if(mutualCount == 0) return 0.0;
+    
+    // Calculate average weight of mutual connections
+    double avgMutualWeight = 0.0;
+    int mutualWithWeight = 0;
+    
+    if(friends.count(userId) && friends.count(candidateId)){
+        unordered_set<int> friendsOfUser;
+        for(auto &p : friends[userId]){
+            friendsOfUser.insert(p.first);
+        }
+        
+        for(auto &p : friends[candidateId]){
+            if(friendsOfUser.count(p.first)){
+                // Find weight from user to mutual friend
+                for(auto &p2 : friends[userId]){
+                    if(p2.first == p.first){
+                        avgMutualWeight += (p.second + p2.second) / 2.0;
+                        mutualWithWeight++;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    
+    if(mutualWithWeight > 0){
+        avgMutualWeight /= mutualWithWeight;
+    }
+    
+    // Mutual friends score: count * 4.0 + average weight bonus
+    return mutualCount * 4.0 + avgMutualWeight * 0.3;
+}
+
+// Calculate triadic closure score (friends of friends principle)
+double SocialNetwork::calculateTriadicClosureScore(int candidateId, const unordered_map<int, double> &weightedPaths){
+    if(!weightedPaths.count(candidateId)) return 0.0;
+    
+    double pathDist = weightedPaths.at(candidateId);
+    if(pathDist <= 2.0){  // Within 2 hops
+        return 5.0 / (1.0 + pathDist);
+    }
+    
+    return 0.0;
+}
+
+// Calculate direct connection strength (friend of friend)
+double SocialNetwork::calculateDirectConnectionScore(int userId, int candidateId){
+    if(!friends.count(userId)) return 0.0;
+    
+    for(auto &p : friends[userId]){
+        if(friends.count(p.first)){
+            for(auto &p2 : friends[p.first]){
+                if(p2.first == candidateId){
+                    // Friend of friend: boost based on connection strength
+                    double connectionStrength = (p.second + p2.second) / 2.0;
+                    return connectionStrength * 2.0;
+                }
+            }
+        }
+    }
+    
+    return 0.0;
+}
+
+// Calculate score for existing users (graph-based + profile-based)
+double SocialNetwork::calculateExistingUserScore(int userId, int candidateId, const User &currentUser, const User &candidate, const unordered_map<int, double> &weightedPaths){
+    double totalScore = 0.0;
+    
+    // Profile Similarity (college, locality, age, hobbies, lastname)
+    double profileScore = computeSimilarity(currentUser, candidate);
+    totalScore += profileScore * 2.0;  
+    
+    // Weighted Graph Path Score using Dijkstra's algorithm
+    double pathScore = calculateWeightedPathScore(userId, candidateId);
+    totalScore += pathScore * 3.0;  // Very high weight for graph connections
+    
+    // Mutual Friends with weighted consideration
+    int mutualCount = countMutualFriends(userId, candidateId);
+    if(mutualCount > 0){
+        totalScore += calculateMutualFriendsScore(userId, candidateId, mutualCount);
+    }
+    
+    // Triadic Closure: If candidate is a friend of a friend, boost the score
+    totalScore += calculateTriadicClosureScore(candidateId, weightedPaths);
+    
+    // Direct connection strength (friend of friend)
+    totalScore += calculateDirectConnectionScore(userId, candidateId);
+    
+    return totalScore;
+}
+
+// Rank candidates and return top N
+vector<int> SocialNetwork::rankAndReturnTopCandidates(const unordered_map<int, double> &scores, int limit){
+    vector<pair<double, int>> ranked;
+    for(auto& entry : scores){
+        ranked.push_back({entry.second, entry.first});
+    }
+    
+    sort(ranked.begin(), ranked.end(), [&](auto &a, auto &b){
+        return a.first > b.first;
+    });
+    
+    vector<int> result;
+    int actualLimit = min(limit, (int)ranked.size());
+    for(int i = 0; i < actualLimit; i++){
+        result.push_back(ranked[i].second);
+    }
+    
+    return result;
+}
+
 vector<int> SocialNetwork::suggestedFriends(int userId){
     vector<int> result;
     if(!users.count(userId)){
@@ -393,22 +620,7 @@ vector<int> SocialNetwork::suggestedFriends(int userId){
             if(excluded.count(candidateId)) continue;
             
             const User &candidate = entry.second;
-            double totalScore = 0.0;
-            
-            // Profile Similarity gets full weight for new users
-            // Priority: College > Locality > Hobbies > Age > LastName
-            double profileScore = computeSimilarity(currentUser, candidate);
-            totalScore += profileScore;  // Full weight for profile match (no multiplier needed)
-            
-            // Additional boost for new users with same college or locality
-            if(currentUser.schoolName == candidate.schoolName && !currentUser.schoolName.empty()){
-                totalScore += 18.0;  // Extra boost for same college
-            }
-            if(currentUser.locality == candidate.locality && !currentUser.locality.empty()){
-                totalScore += 17.0;  // Extra boost for same locality (comparable to college)
-            }
-            
-            comprehensiveScore[candidateId] = totalScore;
+            comprehensiveScore[candidateId] = calculateNewUserScore(currentUser, candidate);
         }
     }
     else{
@@ -422,159 +634,12 @@ vector<int> SocialNetwork::suggestedFriends(int userId){
             if(excluded.count(candidateId)) continue;
             
             const User &candidate = entry.second;
-            double totalScore = 0.0;
-            
-            // Profile Similarity (college, locality, age, hobbies, lastname)
-            double profileScore = computeSimilarity(currentUser, candidate);
-            totalScore += profileScore * 2.0;  
-            
-            // Weighted Graph Path Score using Dijkstra's algorithm
-            double pathScore = calculateWeightedPathScore(userId, candidateId);
-            totalScore += pathScore * 3.0;  // Very high weight for graph connections
-            
-            // Mutual Friends with weighted consideration
-            int mutualCount = countMutualFriends(userId, candidateId);
-            if(mutualCount > 0){
-                // Calculate average weight of mutual connections
-                double avgMutualWeight = 0.0;
-                int mutualWithWeight = 0;
-                
-                if(friends.count(userId) && friends.count(candidateId)){
-                    unordered_set<int> friendsOfUser;
-                    for(auto &p : friends[userId]){
-                        friendsOfUser.insert(p.first);
-                    }
-                    
-                    for(auto &p : friends[candidateId]){
-                        if(friendsOfUser.count(p.first)){
-                            // Find weight from user to mutual friend
-                            for(auto &p2 : friends[userId]){
-                                if(p2.first == p.first){
-                                    avgMutualWeight += (p.second + p2.second) / 2.0;
-                                    mutualWithWeight++;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                if(mutualWithWeight > 0){
-                    avgMutualWeight /= mutualWithWeight;
-                }
-                
-                double mutualScore = mutualCount * 4.0 + avgMutualWeight * 0.3;
-                totalScore += mutualScore;
-            }
-            
-            // Triadic Closure: If candidate is a friend of a friend, boost the score
-            if(weightedPaths.count(candidateId)){
-                double pathDist = weightedPaths[candidateId];
-                if(pathDist <= 2.0){  // Within 2 hops
-                    double triadicScore = 5.0 / (1.0 + pathDist);
-                    totalScore += triadicScore;
-                }
-            }
-            
-            // Direct connection strength (friend of friend)
-            if(friends.count(userId)){
-                for(auto &p : friends[userId]){
-                    if(friends.count(p.first)){
-                        for(auto &p2 : friends[p.first]){
-                            if(p2.first == candidateId){
-                                double connectionStrength = (p.second + p2.second) / 2.0;
-                                totalScore += connectionStrength * 2.0;
-                            }
-                        }
-                    }
-                }
-            }
-            
-            comprehensiveScore[candidateId] = totalScore;
+            comprehensiveScore[candidateId] = calculateExistingUserScore(userId, candidateId, currentUser, candidate, weightedPaths);
         }
     }
     
-    // Sort by comprehensive score
-    vector<pair<double, int>> ranked;
-    for(auto& entry : comprehensiveScore){
-        ranked.push_back({entry.second, entry.first});
-    }
-    
-    sort(ranked.begin(), ranked.end(), [&](auto &a, auto &b){
-        return a.first > b.first;
-    });
-    
-    // Return top 10 suggestions
-    int limit = min(10, (int)ranked.size());
-    for(int i = 0; i < limit; i++){
-        result.push_back(ranked[i].second);
-    }
-    
-    return result;
-}
-
-void SocialNetwork::registerUser(User A){
-    if(usernameToId.count(A.username)){
-        cout<<"Username '"<<A.username<<"' already exists. Try another.\n ";
-        return;
-    }
-
-    A.id = getNextUserId();
-
-    users[A.id] = A;
-
-    usernameToId[A.username] = A.id;
-
-    cout<<"User registered succesfully with ID: "<<A.id<<"\n";
-}
-
-int SocialNetwork::getNextUserId(){
-    if(users.empty()) return 1;
-    int maxId = 0;
-    for(const auto &entry : users){
-        if(entry.first>maxId)   maxId = entry.first;
-    }
-    return maxId + 1;
-}
-
-int SocialNetwork::loginUser(const string &usernme){
-    if(!usernameToId.count(usernme)){
-        cout<<"Username not found\n";
-        return -1;
-    }
-
-    int userId = usernameToId[usernme];
-    User &u = users[userId];
-
-    //ask for password
-    cin.ignore();
-    string inputPassword;
-
-    cout<<"Enter password: ";
-
-    getline(cin,inputPassword);
-    
-    if(inputPassword==u.password){
-        cout<<"Login successful\n";
-        return userId;
-    }
-    else{
-        cout<<"Incorrect Password\n";
-        return -1;
-    }
-}
-
-int SocialNetwork::getUserIdByUsername(const string &uname) {
-    if (usernameToId.count(uname)) return usernameToId[uname];
-    return -1;
-}
-
-void SocialNetwork::viewProfile(int userID){
-    users[userID].displayProfile();
-}
-
-User& SocialNetwork::getUser(int id) {
-    return users[id];
+    // Rank and return top 10 suggestions
+    return rankAndReturnTopCandidates(comprehensiveScore, 10);
 }
 
 int SocialNetwork::countMutualFriends(int userA, int userB){
@@ -595,35 +660,6 @@ int SocialNetwork::countMutualFriends(int userA, int userB){
         }
     }
     return mutualCount;
-}
-
-void SocialNetwork::interact(User A, User B){
-    int userId = A.id;
-    int friendId = B.id;
-
-    bool found = false;
-    
-    for(auto &pair: friends[userId]){
-        if(pair.first == friendId){
-            pair.second += 2;
-            found  = true;
-            break;
-        }
-    }
-
-    for(auto &pair : friends[friendId]){
-        if(pair.first == userId){
-            pair.second += 1;
-            break;
-        }
-    }
-
-    if(!found){
-        cout << "You and " << B.username << " are not friends yet. Add them first.\n";
-    }
-    else {
-        cout <<"You interacted with " << B.username << ". Friendship weight increased.\n";
-    }
 }
 
 bool SocialNetwork::deleteUser(int userId){
