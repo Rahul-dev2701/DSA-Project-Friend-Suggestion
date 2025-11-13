@@ -336,3 +336,111 @@ vector<int> SocialNetwork::suggestedFriends(int userId){
 
     return result;
 };
+void SocialNetwork::registerUser(User A){
+    if(usernameToId.count(A.username)){
+        cout<<"Username '"<<A.username<<"' already exists. Try another.\n ";
+        return;
+    }
+
+    A.id = getNextUserId();
+
+    users[A.id] = A;
+
+    usernameToId[A.username] = A.id;
+
+    cout<<"User registered succesfully with ID: "<<A.id<<"\n";
+}
+int SocialNetwork::getNextUserId(){
+        if(users.empty()) return 1;
+        int maxId = 0;
+        for(const auto &entry : users){
+            if(entry.first>maxId)   maxId = entry.first;
+
+        }
+        return maxId + 1;
+    }
+int SocialNetwork::loginUser(const string &usernme){
+    if(!usernameToId.count(usernme)){
+        cout<<"Username not found\n";
+        return -1;
+    }
+
+    int userId = usernameToId[usernme];
+    User &u = users[userId];
+
+    //ask for password
+    cin.ignore();
+    string inputPassword;
+
+    cout<<"Enter password: ";
+
+    getline(cin,inputPassword);
+    
+    if(inputPassword==u.password){
+        cout<<"Login successful\n";
+        return userId;
+
+    }
+    else{
+        cout<<"Incorrect Password\n";
+        return -1;
+    }
+}
+int SocialNetwork::getUserIdByUsername(const string &uname) {
+        if (usernameToId.count(uname)) return usernameToId[uname];
+        return -1;
+    }
+void SocialNetwork::viewProfile(int userID){
+        users[userID].displayProfile();
+}
+User& SocialNetwork::getUser(int id) {
+        return users[id];
+}
+int SocialNetwork::countMutualFriends(int userA, int userB){
+    if(!friends.count(userA)||!friends.count(userB)){
+        return 0;
+    }
+    
+    unordered_set<int> friendsOfA;
+    for(auto &p:friends[userA]){
+        friendsOfA.insert(p.first);
+    }
+
+    int mutualCount = 0;
+
+    for(auto &p : friends[userB]){
+        if(friendsOfA.count(p.first)){
+            mutualCount++;
+        }
+    }
+    return mutualCount;
+
+}
+void SocialNetwork::interact(User A, User B){
+    int userId = A.id;
+    int friendId = B.id;
+
+    bool found = false;
+    
+    for(auto &pair: friends[userId]){
+        if(pair.first == friendId){
+            pair.second += 2;
+            found  = true;
+            break;
+        }
+    }
+
+    for(auto &pair : friends[friendId]){
+        if(pair.first == userId){
+            pair.second += 1;
+            break;
+        }
+    }
+
+    if(!found){
+        cout << "You and " << B.username << " are not friends yet. Add them first.\n";
+    }
+    else {
+        cout <<"You interacted with " << B.username << ". Friendship weight increased.\n";
+    }
+}
