@@ -189,3 +189,31 @@ int SocialNetwork::countMutualFriends(int userA, int userB){
     return mutualCount;
 
 }
+void SocialNetwork::interact(User A, User B){
+    int userId = A.id;
+    int friendId = B.id;
+
+    bool found = false;
+    
+    for(auto &pair: friends[userId]){
+        if(pair.first == friendId){
+            pair.second += 2;
+            found  = true;
+            break;
+        }
+    }
+
+    for(auto &pair : friends[friendId]){
+        if(pair.first == userId){
+            pair.second += 1;
+            break;
+        }
+    }
+
+    if(!found){
+        cout << "You and " << B.username << " are not friends yet. Add them first.\n";
+    }
+    else {
+        cout <<"You interacted with " << B.username << ". Friendship weight increased.\n";
+    }
+}
