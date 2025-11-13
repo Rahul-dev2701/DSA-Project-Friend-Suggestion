@@ -253,21 +253,6 @@ int main(){
 
 
 //functions
-int SocialNetwork::getNextUserId(){}
-void SocialNetwork::viewProfile(int userID){};
-User& SocialNetwork::getUser(int id){};
-int SocialNetwork::getUserIdByUsername(const string &uname){};
-void SocialNetwork::loadUsers(){};
-void SocialNetwork::loadFriends(){};
-void SocialNetwork::saveUsers(){};
-void SocialNetwork::saveFriends(){};
-void SocialNetwork::registerUser(User A){};
-int SocialNetwork::loginUser(const string &usernme){};
-void SocialNetwork::displayCurrentFriends(int userId){};
-void SocialNetwork::addFriend(User& A, User& B){};
-void SocialNetwork::interact(User A, User B){};
-int SocialNetwork::countMutualFriends(int userA, int userB){};
-double SocialNetwork::computeSimilarity(const User &A, const User &B){};
 vector<int> SocialNetwork::suggestedFriends(int userId){
     vector<int> result;
     if(!users.count(userId)){
