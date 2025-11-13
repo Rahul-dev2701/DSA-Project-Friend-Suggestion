@@ -1,4 +1,6 @@
 #include "SocialNetwork.h"
+#include <algorithm>
+#include <cmath>
 
 // User class methods
 User::User(int id, string uname, string f, string l, string s, string loc, int age, vector<string> h) 
@@ -208,40 +210,156 @@ void SocialNetwork::addFriend(User& A, User& B){
     cout<<"You and "<<B.username<<" are now friends!\n";
 }
 
+// Jaccard Similarity for hobbies: intersection/union
+double SocialNetwork::jaccardSimilarity(const vector<string> &h1, const vector<string> &h2){
+    if(h1.empty() && h2.empty()) return 0.0;
+    if(h1.empty() || h2.empty()) return 0.0;
+    
+    unordered_set<string> set1(h1.begin(), h1.end());
+    unordered_set<string> set2(h2.begin(), h2.end());
+    
+    int intersection = 0;
+    for(const string &h : set1){
+        if(set2.count(h)) intersection++;
+    }
+    
+    int unionSize = set1.size() + set2.size() - intersection;
+    if(unionSize == 0) return 0.0;
+    
+    return (double)intersection / unionSize;
+}
+
+// Lastname similarity using character-based matching
+double SocialNetwork::lastNameSimilarity(const string &name1, const string &name2){
+    if(name1.empty() || name2.empty()) return 0.0;
+    
+    string n1 = name1, n2 = name2;
+    // Convert to lowercase for comparison
+    transform(n1.begin(), n1.end(), n1.begin(), ::tolower);
+    transform(n2.begin(), n2.end(), n2.begin(), ::tolower);
+    
+    // Exact match
+    if(n1 == n2) return 1.0;
+    
+    // Check if one is substring of another (partial match)
+    if(n1.find(n2) != string::npos || n2.find(n1) != string::npos){
+        return 0.6;
+    }
+    
+    // Character-based similarity (simple Levenshtein-like)
+    int commonChars = 0;
+    int minLen = min(n1.length(), n2.length());
+    int maxLen = max(n1.length(), n2.length());
+    
+    for(int i = 0; i < minLen; i++){
+        if(n1[i] == n2[i]) commonChars++;
+    }
+    
+    if(maxLen == 0) return 0.0;
+    return (double)commonChars / maxLen;
+}
+
 double SocialNetwork::computeSimilarity(const User &A, const User &B){
     double score = 0.0;
 
-    //same college
-    if(A.schoolName==B.schoolName){
-        score+=3.0;
+    //  Same College - weight: 45 (HIGHEST PRIORITY)
+    if(A.schoolName == B.schoolName && !A.schoolName.empty()){
+        score += 45.0;
     }
 
-    //same locality
-    if(B.locality==A.locality){
-        score+=3.0;
+    //  Same Locality - weight: 40 (SECOND PRIORITY, comparable to college)
+    if(A.locality == B.locality && !A.locality.empty()){
+        score += 40.0;
     }
 
-    //age diff
-    int ageDiff = abs(A.age-B.age);
-    if(ageDiff<=2)  score+=1.0;
-    else if (ageDiff<=5)    score+=0.5;
-    else if(ageDiff<=10)    score+= 0.25;
+    //  Hobbies similarity  weight: up to 20.0 
+    if(!A.hobbies.empty() && !B.hobbies.empty()){
+        double hobbySim = jaccardSimilarity(A.hobbies, B.hobbies);
+        score += hobbySim * 20.0;  
+    }
     
-    //common hobbies
-    int common =0;
-    set<string> uniqueHobbies;
-
-    for(const string &h : A.hobbies)    uniqueHobbies.insert(h);
-    for(const string &h : B.hobbies){
-        if(uniqueHobbies.count(h))   common++;
-        else uniqueHobbies.insert(h);
-    }
-    if(!uniqueHobbies.empty()){
-        double hobbyScore = (double)common/uniqueHobbies.size();
-        score+=hobbyScore*2;
+    //  Age similarity - weight: up to 10.0 
+    int ageDiff = abs(A.age - B.age);
+    if(ageDiff == 0)      score += 10.0;
+    else if(ageDiff <= 2) score += 7.0;
+    else if(ageDiff <= 5) score += 4.0;
+    else if(ageDiff <= 10) score += 2.0;
+    else if(ageDiff <= 15) score += 1.0;
+    
+    // Lastname similarity- weight: up to 5.0
+    if(!A.lastName.empty() && !B.lastName.empty()){
+        double nameSim = lastNameSimilarity(A.lastName, B.lastName);
+        score += nameSim * 5.0; 
     }
 
     return score;
+}
+
+// Dijkstra's algorithm for weighted shortest paths in the friendship graph
+unordered_map<int, double> SocialNetwork::dijkstraShortestPaths(int source, int maxDepth){
+    unordered_map<int, double> distances;
+    set<pair<double, int>> pq;  // {distance, node}
+    
+    distances[source] = 0.0;
+    pq.insert({0.0, source});
+    
+    while(!pq.empty() && distances.size() < users.size() * 2){
+        auto it = pq.begin();
+        double dist = it->first;
+        int curr = it->second;
+        pq.erase(it);
+        
+        // Limit depth to avoid exploring too far
+        if(dist > maxDepth) continue;
+        
+        if(!friends.count(curr)) continue;
+        
+        for(auto &neighbor : friends[curr]){
+            int neighborId = neighbor.first;
+            int edgeWeight = neighbor.second;
+            
+            //  inverse: distance = 1 / (1 + weight)
+            double edgeDistance = 1.0 / (1.0 + edgeWeight);
+            double newDist = dist + edgeDistance;
+            
+            if(!distances.count(neighborId) || distances[neighborId] > newDist){
+                // Remove old entry if exists
+                if(distances.count(neighborId)){
+                    pq.erase({distances[neighborId], neighborId});
+                }
+                distances[neighborId] = newDist;
+                pq.insert({newDist, neighborId});
+            }
+        }
+    }
+    
+    return distances;
+}
+
+// Calculate weighted path score between two users
+double SocialNetwork::calculateWeightedPathScore(int userA, int userB){
+    if(userA == userB) return 0.0;
+    
+    // Check if they are direct friends
+    if(friends.count(userA)){
+        for(auto &p : friends[userA]){
+            if(p.first == userB){
+                // Direct friend: return inverse of weight (higher weight = better)
+                return 10.0 / (1.0 + p.second);
+            }
+        }
+    }
+    
+    // Use Dijkstra to find shortest weighted path
+    auto distances = dijkstraShortestPaths(userA, 3);  // Max depth 3
+    
+    if(!distances.count(userB)){
+        return 0.0;  // No path found
+    }
+    
+    double pathDistance = distances[userB];
+   
+    return 10.0 / (1.0 + pathDistance);
 }
 
 vector<int> SocialNetwork::suggestedFriends(int userId){
@@ -250,75 +368,148 @@ vector<int> SocialNetwork::suggestedFriends(int userId){
         cout<<"Invalid userID\n";
         return result;  
     }
-    //exclude yourself and your current friends in the traversal
-    unordered_set<int> firstLevel;
-    firstLevel.insert(userId);
-    for(auto& p : friends[userId]){
-        firstLevel.insert(p.first);
-    }
-
-    unordered_map<int ,double> scoreMap;
-
-    //Bfs upto 2 levels
-    queue<pair<int,int>> q;
-    unordered_set<int> visited;
-    q.push({userId,0});
-    visited.insert(userId);
-    bool foundGraphFriends = false;
-    while(!q.empty()){
-        pair<int,int> p = q.front();
-        int curr = p.first;
-        int dist = p.second;
-        q.pop();
-        if(dist==2) continue;
-        for(auto & neigh : friends[curr]){
-            int neighId = neigh.first;
-            int weight = neigh.second;
-
-            if(!visited.count(neighId)){
-                visited.insert(neighId);
-                q.push({neighId,dist+1});
-            }
-
-            if(firstLevel.count(neighId))   continue;
-
-            foundGraphFriends = true;
-
-            //graph score
-            double graphScore = 0;
-            int mutual = countMutualFriends(userId,neighId);
-            graphScore += mutual*2.0;
-            graphScore += weight*0.1;
-
-            double sim = computeSimilarity(users[userId],users[neighId]);
-
-            scoreMap[neighId] += sim + graphScore;
+    
+    const User &currentUser = users[userId];
+    
+    // Check if user is new (has no friends)
+    bool isNewUser = !friends.count(userId) || friends[userId].empty();
+    
+    // Exclude yourself and current friends
+    unordered_set<int> excluded;
+    excluded.insert(userId);
+    if(friends.count(userId)){
+        for(auto& p : friends[userId]){
+            excluded.insert(p.first);
         }
     }
-    if(!foundGraphFriends){
+    
+    unordered_map<int, double> comprehensiveScore;
+    
+    if(isNewUser){
+        // For new users: Focus primarily on profile-based similarity
+        // No graph-based metrics available, so rely on profile matching
         for(auto& entry : users){
-            int otherId = entry.first;
-            if(otherId==userId) continue;
-            double sim = computeSimilarity(users[userId],users[otherId]);
-            scoreMap[otherId] = sim;
+            int candidateId = entry.first;
+            if(excluded.count(candidateId)) continue;
+            
+            const User &candidate = entry.second;
+            double totalScore = 0.0;
+            
+            // Profile Similarity gets full weight for new users
+            // Priority: College > Locality > Hobbies > Age > LastName
+            double profileScore = computeSimilarity(currentUser, candidate);
+            totalScore += profileScore;  // Full weight for profile match (no multiplier needed)
+            
+            // Additional boost for new users with same college or locality
+            if(currentUser.schoolName == candidate.schoolName && !currentUser.schoolName.empty()){
+                totalScore += 18.0;  // Extra boost for same college
+            }
+            if(currentUser.locality == candidate.locality && !currentUser.locality.empty()){
+                totalScore += 17.0;  // Extra boost for same locality (comparable to college)
+            }
+            
+            comprehensiveScore[candidateId] = totalScore;
         }
     }
-
-    //sort by score
-    vector<pair<double,int>> ranked;
-    for(auto& entry : scoreMap){
-        ranked.push_back({entry.second,entry.first});
+    else{
+        // For existing users: Use graph-based + profile-based approach
+        // Calculate weighted shortest paths from current user using Dijkstra
+        auto weightedPaths = dijkstraShortestPaths(userId, 3);
+        
+        // For each candidate user
+        for(auto& entry : users){
+            int candidateId = entry.first;
+            if(excluded.count(candidateId)) continue;
+            
+            const User &candidate = entry.second;
+            double totalScore = 0.0;
+            
+            // Profile Similarity (college, locality, age, hobbies, lastname)
+            double profileScore = computeSimilarity(currentUser, candidate);
+            totalScore += profileScore * 2.0;  
+            
+            // Weighted Graph Path Score using Dijkstra's algorithm
+            double pathScore = calculateWeightedPathScore(userId, candidateId);
+            totalScore += pathScore * 3.0;  // Very high weight for graph connections
+            
+            // Mutual Friends with weighted consideration
+            int mutualCount = countMutualFriends(userId, candidateId);
+            if(mutualCount > 0){
+                // Calculate average weight of mutual connections
+                double avgMutualWeight = 0.0;
+                int mutualWithWeight = 0;
+                
+                if(friends.count(userId) && friends.count(candidateId)){
+                    unordered_set<int> friendsOfUser;
+                    for(auto &p : friends[userId]){
+                        friendsOfUser.insert(p.first);
+                    }
+                    
+                    for(auto &p : friends[candidateId]){
+                        if(friendsOfUser.count(p.first)){
+                            // Find weight from user to mutual friend
+                            for(auto &p2 : friends[userId]){
+                                if(p2.first == p.first){
+                                    avgMutualWeight += (p.second + p2.second) / 2.0;
+                                    mutualWithWeight++;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if(mutualWithWeight > 0){
+                    avgMutualWeight /= mutualWithWeight;
+                }
+                
+                double mutualScore = mutualCount * 4.0 + avgMutualWeight * 0.3;
+                totalScore += mutualScore;
+            }
+            
+            // Triadic Closure: If candidate is a friend of a friend, boost the score
+            if(weightedPaths.count(candidateId)){
+                double pathDist = weightedPaths[candidateId];
+                if(pathDist <= 2.0){  // Within 2 hops
+                    double triadicScore = 5.0 / (1.0 + pathDist);
+                    totalScore += triadicScore;
+                }
+            }
+            
+            // Direct connection strength (friend of friend)
+            if(friends.count(userId)){
+                for(auto &p : friends[userId]){
+                    if(friends.count(p.first)){
+                        for(auto &p2 : friends[p.first]){
+                            if(p2.first == candidateId){
+                                double connectionStrength = (p.second + p2.second) / 2.0;
+                                totalScore += connectionStrength * 2.0;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            comprehensiveScore[candidateId] = totalScore;
+        }
     }
-
-    sort(ranked.begin(),ranked.end(),[&](auto &a, auto &b){
-        return a.first>b.first;
+    
+    // Sort by comprehensive score
+    vector<pair<double, int>> ranked;
+    for(auto& entry : comprehensiveScore){
+        ranked.push_back({entry.second, entry.first});
+    }
+    
+    sort(ranked.begin(), ranked.end(), [&](auto &a, auto &b){
+        return a.first > b.first;
     });
-
-    int limit = min(10,(int)ranked.size());
-    for(int i=0;i<limit;i++){
+    
+    // Return top 10 suggestions
+    int limit = min(10, (int)ranked.size());
+    for(int i = 0; i < limit; i++){
         result.push_back(ranked[i].second);
     }
-
+    
     return result;
 }
 

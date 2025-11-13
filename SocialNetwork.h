@@ -60,6 +60,13 @@ public:
 
     int countMutualFriends(int userA, int userB);       //Compare adjacency lists
     double computeSimilarity(const User &u1, const User &u2);       //Calculate based on school, locality, age, hobbies, etc.
+    
+private:
+    // Helper functions for advanced algorithms
+    double jaccardSimilarity(const vector<string> &h1, const vector<string> &h2);  // Jaccard similarity for hobbies
+    double lastNameSimilarity(const string &name1, const string &name2);  // String similarity for lastnames
+    double calculateWeightedPathScore(int userA, int userB);  // Weighted shortest path using Dijkstra
+    unordered_map<int, double> dijkstraShortestPaths(int source, int maxDepth);  // Dijkstra's algorithm for weighted graph
 };
 
 #endif
