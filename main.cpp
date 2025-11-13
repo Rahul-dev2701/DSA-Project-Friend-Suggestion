@@ -5,6 +5,10 @@
 #include<sstream>
 #include<unordered_set>
 #include<queue>
+#include<string>
+#include<unordered_set>
+#include<set>
+#include<fstream>
 #include<algorithm>
 using namespace std;
 
@@ -469,6 +473,7 @@ double SocialNetwork::computeSimilarity(const User &A, const User &B){
     }
 
     return score;
+}
 
 //functions
 vector<int> SocialNetwork::suggestedFriends(int userId){
