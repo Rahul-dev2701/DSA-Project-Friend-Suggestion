@@ -71,6 +71,7 @@ public:
     void addFriend(User& A,User& B);                 //Add new connection to both users’ friend lists
     void interact(User A, User B);          //Increase friendship weight between two IDs
     int getNextUserId();                    //get next available userId
+    bool deleteUser(int userId);
 
     
     void saveUsers();               //after new registration or profile update
@@ -97,7 +98,8 @@ int main(){
     while(true){
         cout<<"1.Register New User"<<endl;
         cout<<"2.Login"<<endl;
-        cout<<"3.Exit"<<endl;
+        cout<<"3.Delete User Account"<<endl;
+        cout<<"4.Exit"<<endl;
 
         cout<<"Enter choice"<<endl;
         cin>>choice;
@@ -139,8 +141,8 @@ int main(){
 
             int newId = sn.getNextUserId();
             User u(newId, userName, firstName, lastName, college, location, age, hobbies);
-            sn.registerUser(u);
             u.password = password;
+            sn.registerUser(u);
             cout<<"registration succesfull";
             sn.saveUsers();
             
@@ -241,6 +243,46 @@ int main(){
             
         }
         else if(choice==3){
+            //delete user account
+            string userName;
+            cout<<"Enter username to delete: ";
+            getline(cin, userName);
+            
+            int userId = sn.getUserIdByUsername(userName);
+            if (userId == -1) {
+                cout << "Username not found!\n";
+                continue;
+            }
+            
+            // Verify password before deletion
+            User &u = sn.getUser(userId);
+            string inputPassword;
+            cout << "Enter password to confirm deletion: ";
+            getline(cin, inputPassword);
+            
+            if (inputPassword != u.password) {
+                cout << "Incorrect password. Deletion cancelled.\n";
+                continue;
+            }
+            
+            // Confirm deletion
+            cout << "Are you sure you want to delete your account? (yes/no): ";
+            string confirm;
+            getline(cin, confirm);
+            
+            if (confirm == "yes" || confirm == "Yes" || confirm == "YES") {
+                if (sn.deleteUser(userId)) {
+                    cout << "User account deleted successfully.\n";
+                    sn.saveUsers();
+                    sn.saveFriends();
+                } else {
+                    cout << "Failed to delete user account.\n";
+                }
+            } else {
+                cout << "Deletion cancelled.\n";
+            }
+        }   
+        else if(choice==4){
             //exit
             cout << "Exiting FriendBook...\n";
             sn.saveUsers();
@@ -666,4 +708,50 @@ void SocialNetwork::interact(User A, User B){
     else {
         cout <<"You interacted with " << B.username << ". Friendship weight increased.\n";
     }
+}
+bool SocialNetwork::deleteUser(int userId){
+
+    if(!users.count(userId)){
+        return false;
+    }
+    
+    User &u = users[userId];
+    string username = u.username;
+    
+    // Remove user from users map
+    users.erase(userId);
+    
+    // Remove username from usernameToId map
+    usernameToId.erase(username);
+    
+   
+    //  remove user from all their friends' friend lists
+    if(friends.count(userId)){
+        for(auto &pair : friends[userId]){
+            int friendId = pair.first;
+            // Remove this user from friend's friend list
+            if(friends.count(friendId)){
+                auto &friendList = friends[friendId];
+                friendList.erase(
+                    remove_if(friendList.begin(), friendList.end(),
+                    [userId](const std::pair<int, int> &p) { return p.first == userId; }),
+                    friendList.end()
+                );
+            }
+        }
+       
+        friends.erase(userId);
+    }
+    
+  
+    for(auto &entry : friends){
+        auto &friendList = entry.second;
+        friendList.erase(
+            remove_if(friendList.begin(), friendList.end(),
+            [userId](const std::pair<int, int> &p) { return p.first == userId; }),
+            friendList.end()
+        );
+    }
+    
+    return true;
 }
