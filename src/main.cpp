@@ -117,7 +117,6 @@ int main(){
                             sn.viewProfile(suggestions[i]);
                         }
                         cout << "\nEnter the numbers of users you want to add as friends (comma separated), or 0 to skip: ";
-                        cin.ignore();
                         string input;
                         getline(cin, input); 
                         if(input!="0"){
@@ -169,7 +168,6 @@ int main(){
                     User &u = sn.getUser(userId);
                     string inputPassword;
                     cout << "Enter password to confirm deletion: ";
-                    cin.ignore();
                     getline(cin, inputPassword);
                     
                     if (inputPassword != u.password) {

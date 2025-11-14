@@ -138,11 +138,11 @@ void SocialNetwork::saveUsers(){
         file<<"\n";
     }
     file.close();
-    cout<<"Users saved succesfully";
+    cout<<"Users saved succesfully"<<"\n";
 }
 
 void SocialNetwork::saveFriends(){
-   ofstream file("../data/users.csv");
+   ofstream file("../data/friends.csv");
     if(!file.is_open()){
         cout<<"Error saving friends!\n";
         return;
@@ -164,7 +164,7 @@ void SocialNetwork::saveFriends(){
         }
     }
     file.close();
-    cout<<"friend saved succesfully.\n";
+    cout<<"Friends saved successfully.\n";
 }
 
 void SocialNetwork::registerUser(User A){
