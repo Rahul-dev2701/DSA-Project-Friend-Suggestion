@@ -29,7 +29,7 @@ void User::displayProfile()
 SocialNetwork::SocialNetwork() {}
 
 void SocialNetwork::loadUsers(){
-    ifstream file("../data/users.csv");
+    ifstream file("users.csv");
     if (!file.is_open()) {
         cout << "Error opening file!" << endl;
         return ;
@@ -78,7 +78,7 @@ void SocialNetwork::loadUsers(){
 }
 
 void SocialNetwork::loadFriends(){
-   ifstream file("../data/friends.csv"); 
+   ifstream file("friends.csv"); 
    if(!file.is_open()){
         cout<<"couldn't open friends.csv";
         return;
@@ -112,7 +112,7 @@ void SocialNetwork::loadFriends(){
 }
 
 void SocialNetwork::saveUsers(){
-    ofstream file("../data/users.csv");
+    ofstream file("users.csv");
     if(!file.is_open()){
         cout<<"Error saving users!\n";
         return;
@@ -142,7 +142,7 @@ void SocialNetwork::saveUsers(){
 }
 
 void SocialNetwork::saveFriends(){
-    ofstream file("../data/friends.csv");
+    ofstream file("friends.csv");
     if(!file.is_open()){
         cout<<"Error saving friends!\n";
         return;
@@ -455,27 +455,26 @@ double SocialNetwork::calculateWeightedPathScore(int userA, int userB){
     return 10.0 / (1.0 + pathDistance);
 }
 
-// Calculate score for new users (profile-based only)
-double SocialNetwork::calculateNewUserScore(const User &currentUser, const User &candidate){
-    double totalScore = 0.0;
-    
-    // Profile Similarity gets full weight for new users
-    // Priority: College > Locality > Hobbies > Age > LastName
-    double profileScore = computeSimilarity(currentUser, candidate);
-    totalScore += profileScore;  // Full weight for profile match (no multiplier needed)
-    
-    // Additional boost for new users with same college or locality
-    if(currentUser.schoolName == candidate.schoolName && !currentUser.schoolName.empty()){
-        totalScore += 18.0;  // Extra boost for same college
-    }
-    if(currentUser.locality == candidate.locality && !currentUser.locality.empty()){
-        totalScore += 17.0;  // Extra boost for same locality (comparable to college)
+int SocialNetwork::countMutualFriends(int userA, int userB){
+    if(!friends.count(userA)||!friends.count(userB)){
+        return 0;
     }
     
-    return totalScore;
+    unordered_set<int> friendsOfA;
+    for(auto &p:friends[userA]){
+        friendsOfA.insert(p.first);
+    }
+
+    int mutualCount = 0;
+
+    for(auto &p : friends[userB]){
+        if(friendsOfA.count(p.first)){
+            mutualCount++;
+        }
+    }
+    return mutualCount;
 }
 
-// Calculate mutual friends score with weighted consideration
 double SocialNetwork::calculateMutualFriendsScore(int userId, int candidateId, int mutualCount){
     if(mutualCount == 0) return 0.0;
     
@@ -523,7 +522,6 @@ double SocialNetwork::calculateTriadicClosureScore(int candidateId, const unorde
     return 0.0;
 }
 
-// Calculate direct connection strength (friend of friend)
 double SocialNetwork::calculateDirectConnectionScore(int userId, int candidateId){
     if(!friends.count(userId)) return 0.0;
     
@@ -540,6 +538,26 @@ double SocialNetwork::calculateDirectConnectionScore(int userId, int candidateId
     }
     
     return 0.0;
+}
+
+// Calculate score for new users (profile-based only)
+double SocialNetwork::calculateNewUserScore(const User &currentUser, const User &candidate){
+    double totalScore = 0.0;
+    
+    // Profile Similarity gets full weight for new users
+    // Priority: College > Locality > Hobbies > Age > LastName
+    double profileScore = computeSimilarity(currentUser, candidate);
+    totalScore += profileScore;  // Full weight for profile match (no multiplier needed)
+    
+    // Additional boost for new users with same college or locality
+    if(currentUser.schoolName == candidate.schoolName && !currentUser.schoolName.empty()){
+        totalScore += 18.0;  // Extra boost for same college
+    }
+    if(currentUser.locality == candidate.locality && !currentUser.locality.empty()){
+        totalScore += 17.0;  // Extra boost for same locality (comparable to college)
+    }
+    
+    return totalScore;
 }
 
 // Calculate score for existing users (graph-based + profile-based)
@@ -569,7 +587,6 @@ double SocialNetwork::calculateExistingUserScore(int userId, int candidateId, co
     return totalScore;
 }
 
-// Rank candidates and return top N
 vector<int> SocialNetwork::rankAndReturnTopCandidates(const unordered_map<int, double> &scores, int limit){
     vector<pair<double, int>> ranked;
     for(auto& entry : scores){
@@ -642,25 +659,6 @@ vector<int> SocialNetwork::suggestedFriends(int userId){
     return rankAndReturnTopCandidates(comprehensiveScore, 10);
 }
 
-int SocialNetwork::countMutualFriends(int userA, int userB){
-    if(!friends.count(userA)||!friends.count(userB)){
-        return 0;
-    }
-    
-    unordered_set<int> friendsOfA;
-    for(auto &p:friends[userA]){
-        friendsOfA.insert(p.first);
-    }
-
-    int mutualCount = 0;
-
-    for(auto &p : friends[userB]){
-        if(friendsOfA.count(p.first)){
-            mutualCount++;
-        }
-    }
-    return mutualCount;
-}
 
 bool SocialNetwork::deleteUser(int userId){
     if(!users.count(userId)){
