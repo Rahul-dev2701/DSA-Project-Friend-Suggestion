@@ -3,6 +3,18 @@
 #include <sstream>
 using namespace std;
 
+// Helper function to safely read integer input
+int getIntInput() {
+    int value;
+    while (!(cin >> value)) {
+        cin.clear();
+        cin.ignore(10000, '\n');
+        cout << "Invalid input. Please enter a valid integer: ";
+    }
+    cin.ignore();
+    return value;
+}
+
 int main(){
     SocialNetwork sn;
     sn.loadUsers();
@@ -22,8 +34,7 @@ int main(){
         cout<<"4.Exit"<<endl;
 
         cout<<"Enter choice"<<endl;
-        cin>>choice;
-        cin.ignore();
+        choice = getIntInput();
         if(choice==1){
             //register new user
             string userName, firstName, lastName, college, location, password; 
@@ -46,8 +57,7 @@ int main(){
             cout<<"Enter your city: ";
             getline(cin,location);
             cout << "Enter age: ";
-            cin >> age;
-            cin.ignore();
+            age = getIntInput();
             cout << "Enter hobbies separated by commas: ";
             //input hobbies
 
@@ -86,10 +96,10 @@ int main(){
                 cout<<"2. View friend list\n";
                 cout<<"3. People you might want to be your friend\n";
                 cout<<"4. Interact with a friend\n";
-                cout<<"5. Logout\n";
+                cout<<"5. Delete Account\n";
+                cout<<"6. Logout\n";
                 cout<<"Enter choice\n";
-                int op;
-                cin>>op;
+                int op = getIntInput();
                 if(op==1){
                     sn.viewProfile(userId);
                 }
@@ -155,6 +165,38 @@ int main(){
                     }
                 }
                 else if(op==5){
+                    // Delete account from login menu
+                    User &u = sn.getUser(userId);
+                    string inputPassword;
+                    cout << "Enter password to confirm deletion: ";
+                    cin.ignore();
+                    getline(cin, inputPassword);
+                    
+                    if (inputPassword != u.password) {
+                        cout << "Incorrect password. Deletion cancelled.\n";
+                        continue;
+                    }
+                    
+                    // Confirm deletion
+                    cout << "Are you sure you want to delete your account? (yes/no): ";
+                    string confirm;
+                    getline(cin, confirm);
+                    
+                    if (confirm == "yes" || confirm == "Yes" || confirm == "YES") {
+                        if (sn.deleteUser(userId)) {
+                            cout << "User account deleted successfully.\n";
+                            sn.saveUsers();
+                            sn.saveFriends();
+                            cout << "Logging out...\n";
+                            break;
+                        } else {
+                            cout << "Failed to delete user account.\n";
+                        }
+                    } else {
+                        cout << "Deletion cancelled.\n";
+                    }
+                }
+                else if(op==6){
                     cout << "Logging out...\n";
                     break;
                 }

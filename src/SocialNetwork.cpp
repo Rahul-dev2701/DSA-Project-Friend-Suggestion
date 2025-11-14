@@ -29,7 +29,7 @@ void User::displayProfile()
 SocialNetwork::SocialNetwork() {}
 
 void SocialNetwork::loadUsers(){
-    ifstream file("users.csv");
+    ifstream file("../data/users.csv");
     if (!file.is_open()) {
         cout << "Error opening file!" << endl;
         return ;
@@ -78,7 +78,7 @@ void SocialNetwork::loadUsers(){
 }
 
 void SocialNetwork::loadFriends(){
-   ifstream file("friends.csv"); 
+   ifstream file("../data/friends.csv"); 
    if(!file.is_open()){
         cout<<"couldn't open friends.csv";
         return;
@@ -112,7 +112,7 @@ void SocialNetwork::loadFriends(){
 }
 
 void SocialNetwork::saveUsers(){
-    ofstream file("users.csv");
+    ofstream file("../data/users.csv");
     if(!file.is_open()){
         cout<<"Error saving users!\n";
         return;
@@ -142,7 +142,7 @@ void SocialNetwork::saveUsers(){
 }
 
 void SocialNetwork::saveFriends(){
-    ofstream file("friends.csv");
+    ofstream file("../data/friends.csv");
     if(!file.is_open()){
         cout<<"Error saving friends!\n";
         return;
